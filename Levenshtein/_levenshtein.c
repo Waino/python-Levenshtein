@@ -184,6 +184,7 @@ static PyObject* inverse_py(PyObject *self, PyObject *args);
 static PyObject* apply_edit_py(PyObject *self, PyObject *args);
 static PyObject* matching_blocks_py(PyObject *self, PyObject *args);
 static PyObject* subtract_edit_py(PyObject *self, PyObject *args);
+static PyObject* compare_lists_py(PyObject *self, PyObject *args);
 
 #define Levenshtein_DESC \
   "A C extension module for fast computation of:\n" \
@@ -562,6 +563,9 @@ static PyObject* subtract_edit_py(PyObject *self, PyObject *args);
   ">>> apply_edit(subtract_edit(e, e1), bastard, 'scotsman')\n" \
   "'scotsman'\n" \
 
+#define compare_lists_DESC \
+    "FIXME.\n"
+
 #define METHODS_ITEM(x) { #x, x##_py, METH_VARARGS, x##_DESC }
 static PyMethodDef methods[] = {
   METHODS_ITEM(distance),
@@ -581,6 +585,7 @@ static PyMethodDef methods[] = {
   METHODS_ITEM(apply_edit),
   METHODS_ITEM(matching_blocks),
   METHODS_ITEM(subtract_edit),
+  METHODS_ITEM(compare_lists),
   { NULL, NULL, 0, NULL },
 };
 
@@ -6830,4 +6835,10 @@ lev_weighted_average(size_t len1,
   return NULL;
 }
 */
+
+static PyObject*
+compare_lists_py(PyObject *self, PyObject *args)
+{
+    return PyFloat_FromDouble(1.0);
+}
 
