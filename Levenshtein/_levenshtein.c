@@ -97,6 +97,7 @@
 #define _LEV_STATIC_PY static
 #define lev_wchar Py_UNICODE
 #include <Python.h>
+#include <numpy/arrayobject.h>
 #endif /* NO_PYTHON */
 
 #if PY_MAJOR_VERSION >= 3
@@ -185,6 +186,11 @@ static PyObject* apply_edit_py(PyObject *self, PyObject *args);
 static PyObject* matching_blocks_py(PyObject *self, PyObject *args);
 static PyObject* subtract_edit_py(PyObject *self, PyObject *args);
 static PyObject* compare_lists_py(PyObject *self, PyObject *args);
+
+/* Utility functions for NumPy arrays */
+double **pymatrix_to_Carrayptrs(PyArrayObject *arrayin);
+double **ptrvector(long n);
+void free_Carrayptrs(double **v);
 
 #define Levenshtein_DESC \
   "A C extension module for fast computation of:\n" \
@@ -2091,6 +2097,7 @@ PY_MOD_INIT_FUNC_DEF(_levenshtein)
   size_t i;
 
   PY_INIT_MOD(module, "_levenshtein", Levenshtein_DESC, methods)
+  import_array(); /* Initialize NumPy */
   /* create intern strings for edit operation names */
   if (opcode_names[0].pystring)
     abort();
@@ -6836,9 +6843,54 @@ lev_weighted_average(size_t len1,
 }
 */
 
+/* Utility functions for NumPy arrays */
+double **pymatrix_to_Carrayptrs(PyArrayObject *arrayin) { 
+    double **c, *a;
+    int i,n,m;
+
+    n = arrayin->dimensions[0];
+    m = arrayin->dimensions[1];
+    c = ptrvector(n);
+    a = (double *) arrayin->data; /* pointer to arrayin data as double */
+    for (i=0; i<n; i++) {
+        c[i] = a+i*m; }
+    return c;
+}
+
+double **ptrvector(long n) { 
+    double **v;
+    v = (double **)malloc((size_t) (n*sizeof(double)));
+    if (!v) {
+        printf("In **ptrvector. Allocation of memory for double array failed.");
+        exit(0);
+    }
+    return v;
+}
+
+void free_Carrayptrs(double **v) { 
+    free((char*) v);
+}
+
+/* Levenshtein distances between two lists of strings, with don't care radius */
+
 static PyObject*
 compare_lists_py(PyObject *self, PyObject *args)
 {
-    return PyFloat_FromDouble(1.0);
+    int i, j;
+    int dims[2];
+    PyArrayObject* npmat;
+    double** cmat;
+
+    dims[0] = 2;    /* FIXME mockup */
+    dims[1] = 3;
+    npmat = (PyArrayObject *) PyArray_FromDims(2, dims, NPY_DOUBLE);
+    cmat = pymatrix_to_Carrayptrs(npmat);
+    for (i=0; i<dims[0]; i++) {
+        for (j=0; j<dims[1]; j++) {
+            cmat[i][j] = (i+1) * (j+1);
+        }
+    }
+    free_Carrayptrs(cmat);
+    return PyArray_Return(npmat);
 }
 

@@ -1,6 +1,7 @@
 from setuptools import setup
 import os
 import sys
+import numpy as np
 
 from distutils.core import Extension
 
@@ -8,6 +9,7 @@ version = '0.12.0'
 
 extLevensthein = Extension('Levenshtein._levenshtein',
                            sources = ['Levenshtein/_levenshtein.c'],
+                           include_dirs=[np.get_include()],
                            )
 
 if sys.version_info >= (3, 0):
