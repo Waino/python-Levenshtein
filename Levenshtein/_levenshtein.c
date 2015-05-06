@@ -6889,7 +6889,9 @@ compare_lists_py(PyObject *self, PyObject *args)
     PyObject *strseq1;
     PyObject *strseq2;
     int stringtype1, stringtype2;
+    size_t distance;
     const char *name = "compare_lists";
+    const int xcost = 0;    /* substitution cost is 1 */
 
     if (!PyArg_UnpackTuple(args, PYARGCFIX(name), 2, 2, &strlist1, &strlist2)) {
         PyErr_Format(PyExc_TypeError,
@@ -6950,19 +6952,26 @@ compare_lists_py(PyObject *self, PyObject *args)
         return NULL;
     }
 
-    free(strings1);
-    free(strings2);
-    free(sizes1);
-    free(sizes2);
-
     npmat = (PyArrayObject *) PyArray_FromDims(2, dims, NPY_DOUBLE);
     cmat = pymatrix_to_Carrayptrs(npmat);
     for (i=0; i<dims[0]; i++) {
         for (j=0; j<dims[1]; j++) {
-            cmat[i][j] = (i+1) * (j+1);
+            distance = lev_edit_distance(
+                sizes1[i], strings1[i], sizes2[j], strings2[j], xcost);
+            if (distance == (size_t)(-1)) {
+                PyErr_NoMemory();
+                return NULL;
+            }
+            cmat[i][j] = distance
         }
     }
+
+    free(strings1);
+    free(strings2);
+    free(sizes1);
+    free(sizes2);
     free_Carrayptrs(cmat);
+
     return PyArray_Return(npmat);
 }
 
