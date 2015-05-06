@@ -6880,9 +6880,81 @@ compare_lists_py(PyObject *self, PyObject *args)
     int dims[2];
     PyArrayObject* npmat;
     double** cmat;
+    void *strings1 = NULL;
+    void *strings2 = NULL;
+    size_t *sizes1 = NULL;
+    size_t *sizes2 = NULL;
+    PyObject *strlist1;
+    PyObject *strlist2;
+    PyObject *strseq1;
+    PyObject *strseq2;
+    int stringtype1, stringtype2;
+    const char *name = "compare_lists";
 
-    dims[0] = 2;    /* FIXME mockup */
-    dims[1] = 3;
+    if (!PyArg_UnpackTuple(args, PYARGCFIX(name), 2, 2, &strlist1, &strlist2)) {
+        PyErr_Format(PyExc_TypeError,
+                     "%s expecting 2 arguments", name);
+        return NULL;
+    }
+
+    if (!PySequence_Check(strlist1)) {
+        PyErr_Format(PyExc_TypeError,
+                     "%s first argument must be a Sequence", name);
+        return NULL;
+    }
+    if (!PySequence_Check(strlist2)) {
+        PyErr_Format(PyExc_TypeError,
+                     "%s second argument must be a Sequence", name);
+        return NULL;
+    }
+
+    strseq1 = PySequence_Fast(strlist1, name);
+    strseq2 = PySequence_Fast(strlist2, name);
+
+    dims[0] = PySequence_Fast_GET_SIZE(strseq1);
+    dims[1] = PySequence_Fast_GET_SIZE(strseq2);
+    if (dims[0] == 0 || dims[1] == 0) {
+        Py_DECREF(strseq1);
+        Py_DECREF(strseq2);
+        PyErr_Format(PyExc_TypeError,
+                     "%s both sequences must be nonempty",
+                     name);
+        return NULL;
+    }
+
+    stringtype1 = extract_stringlist(strseq1, name, dims[0], &sizes1, &strings1);
+    stringtype2 = extract_stringlist(strseq2, name, dims[1], &sizes2, &strings2);
+    Py_DECREF(strseq1);
+    Py_DECREF(strseq2);
+    if (stringtype2 < 0 || stringtype1 < 0) {
+        PyErr_Format(PyExc_TypeError,
+                     "%s sequences were broken",
+                     name);
+        return NULL;
+    }
+
+    if (stringtype1 != stringtype2) {
+        PyErr_Format(PyExc_TypeError,
+                     "%s both sequences must consist of items of the same type",
+                     name);
+        return NULL;
+    }
+    else if (stringtype1 == 0) {
+        /* string */
+    }
+    else if (stringtype1 == 1) {
+        /* unicode */
+    }
+    else {
+        PyErr_Format(PyExc_SystemError, "%s internal error", name);
+        return NULL;
+    }
+
+    free(strings1);
+    free(strings2);
+    free(sizes1);
+    free(sizes2);
+
     npmat = (PyArrayObject *) PyArray_FromDims(2, dims, NPY_DOUBLE);
     cmat = pymatrix_to_Carrayptrs(npmat);
     for (i=0; i<dims[0]; i++) {
