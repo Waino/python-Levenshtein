@@ -6880,8 +6880,8 @@ compare_lists_py(PyObject *self, PyObject *args)
     int dims[2];
     PyArrayObject* npmat;
     double** cmat;
-    void *strings1 = NULL;
-    void *strings2 = NULL;
+    Py_UNICODE **strings1 = NULL;
+    Py_UNICODE **strings2 = NULL;
     size_t *sizes1 = NULL;
     size_t *sizes2 = NULL;
     PyObject *strlist1;
@@ -6935,20 +6935,10 @@ compare_lists_py(PyObject *self, PyObject *args)
         return NULL;
     }
 
-    if (stringtype1 != stringtype2) {
+    if (stringtype1 != 1 || stringtype2 != 1) {
         PyErr_Format(PyExc_TypeError,
-                     "%s both sequences must consist of items of the same type",
+                     "%s both sequences must consist of unicode strings",
                      name);
-        return NULL;
-    }
-    else if (stringtype1 == 0) {
-        /* string */
-    }
-    else if (stringtype1 == 1) {
-        /* unicode */
-    }
-    else {
-        PyErr_Format(PyExc_SystemError, "%s internal error", name);
         return NULL;
     }
 
@@ -6956,13 +6946,13 @@ compare_lists_py(PyObject *self, PyObject *args)
     cmat = pymatrix_to_Carrayptrs(npmat);
     for (i=0; i<dims[0]; i++) {
         for (j=0; j<dims[1]; j++) {
-            distance = lev_edit_distance(
+            distance = lev_u_edit_distance(
                 sizes1[i], strings1[i], sizes2[j], strings2[j], xcost);
             if (distance == (size_t)(-1)) {
                 PyErr_NoMemory();
                 return NULL;
             }
-            cmat[i][j] = distance
+            cmat[i][j] = distance;
         }
     }
 
