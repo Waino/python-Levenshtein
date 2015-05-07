@@ -6886,16 +6886,19 @@ compare_lists_py(PyObject *self, PyObject *args)
     size_t *sizes2 = NULL;
     PyObject *strlist1;
     PyObject *strlist2;
+    PyObject *threshobj;
     PyObject *strseq1;
     PyObject *strseq2;
     int stringtype1, stringtype2;
     size_t distance;
+    double thresh;
     const char *name = "compare_lists";
     const int xcost = 0;    /* substitution cost is 1 */
 
-    if (!PyArg_UnpackTuple(args, PYARGCFIX(name), 2, 2, &strlist1, &strlist2)) {
+    if (!PyArg_UnpackTuple(args, PYARGCFIX(name), 3, 3,
+                           &strlist1, &strlist2, &threshobj)) {
         PyErr_Format(PyExc_TypeError,
-                     "%s expecting 2 arguments", name);
+                     "%s expecting 3 arguments", name);
         return NULL;
     }
 
@@ -6912,6 +6915,11 @@ compare_lists_py(PyObject *self, PyObject *args)
 
     strseq1 = PySequence_Fast(strlist1, name);
     strseq2 = PySequence_Fast(strlist2, name);
+    if (!PyObject_TypeCheck(threshobj, &PyFloat_Type)) {
+      PyErr_Format(PyExc_TypeError, "%s third argument must be a Float", name);
+      return NULL;
+    }
+    thresh = PyFloat_AS_DOUBLE(threshobj);
 
     dims[0] = PySequence_Fast_GET_SIZE(strseq1);
     dims[1] = PySequence_Fast_GET_SIZE(strseq2);
