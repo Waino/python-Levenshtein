@@ -91,6 +91,7 @@
 #define _GNU_SOURCE
 #include <string.h>
 #include <math.h>
+#include <stdlib.h>
 /* for debugging */
 #include <stdio.h>
 #else /* NO_PYTHON */
@@ -6892,6 +6893,8 @@ compare_lists_py(PyObject *self, PyObject *args)
     int stringtype1, stringtype2;
     size_t distance;
     double thresh;
+    size_t longer;
+    double thresh_chars;
     const char *name = "compare_lists";
     const int xcost = 0;    /* substitution cost is 1 */
 
@@ -6954,6 +6957,16 @@ compare_lists_py(PyObject *self, PyObject *args)
     cmat = pymatrix_to_Carrayptrs(npmat);
     for (i=0; i<dims[0]; i++) {
         for (j=0; j<dims[1]; j++) {
+            longer = sizes1[i];
+            if (sizes2[j] > longer) {
+                longer = sizes2[j];
+            }
+            thresh_chars = thresh * longer;
+            if (abs(sizes1[i] - sizes2[j]) > thresh_chars) {
+                cmat[i][j] = -1;
+                continue;
+            }
+
             distance = lev_u_edit_distance(
                 sizes1[i], strings1[i], sizes2[j], strings2[j], xcost);
             if (distance == (size_t)(-1)) {
