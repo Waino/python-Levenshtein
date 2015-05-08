@@ -6878,7 +6878,7 @@ void free_Carrayptrs(double **v) {
 typedef struct
 {
     Py_UNICODE sym;     /**< Character */
-    float cnt;          /**< Count */
+    size_t cnt;         /**< Count */
     UT_hash_handle hh;  /**< uthash handle */
 } bag_t;
 
@@ -6930,7 +6930,7 @@ bag_distance(bag_t *xh, bag_t *yh, size_t y_len)
         if (!yb) {
             d += xb->cnt;
         } else {
-            d += fabs(xb->cnt - yb->cnt);
+            d += abs(xb->cnt - yb->cnt);
             missing -= yb->cnt;
         }
     }
@@ -7052,13 +7052,14 @@ compare_lists_py(PyObject *self, PyObject *args)
             distance = bag_distance(histograms1[i],
                                     histograms2[j],
                                     sizes2[j]);
-            /*if (distance > thresh_chars) {
+            if (distance > thresh_chars) {
                 cmat[i][j] = -1;
                 continue;
-            }*/
+            }
 
-            distance = lev_u_edit_distance(
+            /*distance = lev_u_edit_distance(
                 sizes1[i], strings1[i], sizes2[j], strings2[j], xcost);
+            */
             if (distance == (size_t)(-1)) {
                 PyErr_NoMemory();
                 return NULL;
