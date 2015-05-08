@@ -124,6 +124,7 @@
 #endif /* PY_MAJOR_VERSION */
 
 #include <assert.h>
+#include "uthash.h"
 #include "_levenshtein.h"
 
 /* FIXME: inline avaliability should be solved in setup.py, somehow, or
@@ -6872,7 +6873,81 @@ void free_Carrayptrs(double **v) {
     free((char*) v);
 }
 
-/* Levenshtein distances between two lists of strings, with don't care radius */
+/* Utility functions for character histogram using hash table */
+
+typedef struct
+{
+    Py_UNICODE sym;     /**< Character */
+    float cnt;          /**< Count */
+    UT_hash_handle hh;  /**< uthash handle */
+} bag_t;
+
+static bag_t*
+bag_create(Py_UNICODE *x, size_t x_len)
+{
+    bag_t *xh = NULL, *bag = NULL;
+    Py_UNICODE sym;
+    int i;
+
+    for (i = 0; i < x_len; i++) {
+        sym = x[i];
+        HASH_FIND(hh, xh, &sym, sizeof(Py_UNICODE), bag);
+
+        if (!bag) {
+            bag = malloc(sizeof(bag_t));
+            bag->sym = sym;
+            bag->cnt = 0;
+            HASH_ADD(hh, xh, sym, sizeof(Py_UNICODE), bag);
+        }
+
+        bag->cnt++;
+    }
+
+    return xh;
+}
+
+static void
+bag_destroy(bag_t *xh)
+{
+    /* Clear hash table */
+    while (xh) {
+        bag_t *bag = xh;
+        HASH_DEL(xh, bag);
+        free(bag);
+    }
+}
+
+/* Bag distance (lower bound for Levenshtein) */
+size_t
+bag_distance(size_t x_len, Py_UNICODE *x, size_t y_len, Py_UNICODE *y)
+{
+    size_t d = 0;
+    bag_t *xh, *yh, *xb, *yb;
+
+    xh = bag_create(x, x_len);
+    yh = bag_create(y, y_len);
+
+    size_t missing = y_len;
+    for (xb = xh; xb != NULL; xb = xb->hh.next) {
+        HASH_FIND(hh, yh, &(xb->sym), sizeof(Py_UNICODE), yb);
+        if (!yb) {
+            d += xb->cnt;
+        } else {
+            d += fabs(xb->cnt - yb->cnt);
+            missing -= yb->cnt;
+        }
+    }
+    d += missing;
+
+    bag_destroy(xh);
+    bag_destroy(yh);
+
+    return d;
+}
+
+
+/* Levenshtein distances between two lists of strings,
+   with don't care radius threshold */
 
 static PyObject*
 compare_lists_py(PyObject *self, PyObject *args)
@@ -6962,7 +7037,15 @@ compare_lists_py(PyObject *self, PyObject *args)
                 longer = sizes2[j];
             }
             thresh_chars = (1.0 - thresh) * longer;
+            /* Prune using length difference as lower bound */
             if (abs(sizes1[i] - sizes2[j]) > thresh_chars) {
+                cmat[i][j] = -1;
+                continue;
+            }
+            /* Prune using bag distance as lower bound */
+            distance = bag_distance(sizes1[i], strings1[i],
+                                    sizes2[j], strings2[j]);
+            if (distance > thresh_chars) {
                 cmat[i][j] = -1;
                 continue;
             }
@@ -6985,4 +7068,5 @@ compare_lists_py(PyObject *self, PyObject *args)
 
     return PyArray_Return(npmat);
 }
+
 
