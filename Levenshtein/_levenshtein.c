@@ -6921,22 +6921,31 @@ bag_destroy(bag_t *xh)
 size_t
 bag_distance(bag_t *xh, bag_t *yh, size_t y_len)
 {
-    size_t d = 0;
+    size_t d1 = 0;  /* in x but not y */
+    size_t d2 = 0;  /* in y but not x */
     bag_t *xb, *yb;
 
     size_t missing = y_len;
     for (xb = xh; xb != NULL; xb = xb->hh.next) {
         HASH_FIND(hh, yh, &(xb->sym), sizeof(Py_UNICODE), yb);
         if (!yb) {
-            d += xb->cnt;
+            d1 += xb->cnt;
         } else {
-            d += abs(xb->cnt - yb->cnt);
+            if (xb->cnt > yb->cnt) {
+                d1 += xb->cnt - yb->cnt;
+            } else {
+                d2 += yb->cnt - xb->cnt;
+            }
             missing -= yb->cnt;
         }
     }
-    d += missing;
+    d2 += missing;
+    /* the larger difference is the lower bound */
+    if (d2 > d1) {
+        d1 = d2;
+    }
 
-    return d;
+    return d1;
 }
 
 
@@ -7057,9 +7066,8 @@ compare_lists_py(PyObject *self, PyObject *args)
                 continue;
             }
 
-            /*distance = lev_u_edit_distance(
+            distance = lev_u_edit_distance(
                 sizes1[i], strings1[i], sizes2[j], strings2[j], xcost);
-            */
             if (distance == (size_t)(-1)) {
                 PyErr_NoMemory();
                 return NULL;
