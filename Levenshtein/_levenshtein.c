@@ -6919,13 +6919,10 @@ bag_destroy(bag_t *xh)
 
 /* Bag distance (lower bound for Levenshtein) */
 size_t
-bag_distance(size_t x_len, Py_UNICODE *x, size_t y_len, Py_UNICODE *y)
+bag_distance(bag_t *xh, bag_t *yh, size_t y_len)
 {
     size_t d = 0;
-    bag_t *xh, *yh, *xb, *yb;
-
-    xh = bag_create(x, x_len);
-    yh = bag_create(y, y_len);
+    bag_t *xb, *yb;
 
     size_t missing = y_len;
     for (xb = xh; xb != NULL; xb = xb->hh.next) {
@@ -6938,9 +6935,6 @@ bag_distance(size_t x_len, Py_UNICODE *x, size_t y_len, Py_UNICODE *y)
         }
     }
     d += missing;
-
-    bag_destroy(xh);
-    bag_destroy(yh);
 
     return d;
 }
@@ -6969,6 +6963,8 @@ compare_lists_py(PyObject *self, PyObject *args)
     size_t distance;
     double thresh;
     size_t longer;
+    bag_t **histograms1;
+    bag_t **histograms2;
     double thresh_chars;
     const char *name = "compare_lists";
     const int xcost = 0;    /* substitution cost is 1 */
@@ -7028,6 +7024,16 @@ compare_lists_py(PyObject *self, PyObject *args)
         return NULL;
     }
 
+    /* Precalculate histograms for bag distance pruning */
+    histograms1 = (bag_t *)malloc((size_t) (dims[0]*sizeof(bag_t)));
+    histograms2 = (bag_t *)malloc((size_t) (dims[1]*sizeof(bag_t)));
+    for (i=0; i<dims[0]; i++) {
+        histograms1[i] = bag_create(strings1[i], sizes1[i]);
+    }
+    for (j=0; j<dims[1]; j++) {
+        histograms2[j] = bag_create(strings2[j], sizes2[j]);
+    }
+
     npmat = (PyArrayObject *) PyArray_FromDims(2, dims, NPY_DOUBLE);
     cmat = pymatrix_to_Carrayptrs(npmat);
     for (i=0; i<dims[0]; i++) {
@@ -7043,12 +7049,13 @@ compare_lists_py(PyObject *self, PyObject *args)
                 continue;
             }
             /* Prune using bag distance as lower bound */
-            distance = bag_distance(sizes1[i], strings1[i],
-                                    sizes2[j], strings2[j]);
-            if (distance > thresh_chars) {
+            distance = bag_distance(histograms1[i],
+                                    histograms2[j],
+                                    sizes2[j]);
+            /*if (distance > thresh_chars) {
                 cmat[i][j] = -1;
                 continue;
-            }
+            }*/
 
             distance = lev_u_edit_distance(
                 sizes1[i], strings1[i], sizes2[j], strings2[j], xcost);
@@ -7065,6 +7072,14 @@ compare_lists_py(PyObject *self, PyObject *args)
     free(sizes1);
     free(sizes2);
     free_Carrayptrs(cmat);
+    for (i=0; i<dims[0]; i++) {
+        bag_destroy(histograms1[i]);
+    }
+    for (j=0; j<dims[1]; j++) {
+        bag_destroy(histograms2[j]);
+    }
+    free(histograms1);
+    free(histograms2);
 
     return PyArray_Return(npmat);
 }
