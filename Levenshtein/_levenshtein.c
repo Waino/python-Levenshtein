@@ -6992,11 +6992,13 @@ compare_lists_py(PyObject *self, PyObject *args)
     PyObject *strlist1;
     PyObject *strlist2;
     PyObject *threshobj;
+    PyObject *bestobj;
     PyObject *strseq1;
     PyObject *strseq2;
     int stringtype1, stringtype2;
     size_t distance;
     double thresh;
+    long bestonly;
     size_t longer;
     bag_t **histograms1;
     bag_t **histograms2;
@@ -7004,10 +7006,10 @@ compare_lists_py(PyObject *self, PyObject *args)
     const char *name = "compare_lists";
     const int xcost = 0;    /* substitution cost is 1 */
 
-    if (!PyArg_UnpackTuple(args, PYARGCFIX(name), 3, 3,
-                           &strlist1, &strlist2, &threshobj)) {
+    if (!PyArg_UnpackTuple(args, PYARGCFIX(name), 4, 4,
+                           &strlist1, &strlist2, &threshobj, &bestobj)) {
         PyErr_Format(PyExc_TypeError,
-                     "%s expecting 3 arguments", name);
+                     "%s expecting 4 arguments", name);
         return NULL;
     }
 
@@ -7029,6 +7031,7 @@ compare_lists_py(PyObject *self, PyObject *args)
       return NULL;
     }
     thresh = PyFloat_AS_DOUBLE(threshobj);
+    bestonly = PyInt_AS_LONG(bestobj);
 
     dims[0] = PySequence_Fast_GET_SIZE(strseq1);
     dims[1] = PySequence_Fast_GET_SIZE(strseq2);
@@ -7072,12 +7075,13 @@ compare_lists_py(PyObject *self, PyObject *args)
     npmat = (PyArrayObject *) PyArray_FromDims(2, dims, NPY_DOUBLE);
     cmat = pymatrix_to_Carrayptrs(npmat);
     for (i=0; i<dims[0]; i++) {
+        double lthresh = thresh;
         for (j=0; j<dims[1]; j++) {
             longer = sizes1[i];
             if (sizes2[j] > longer) {
                 longer = sizes2[j];
             }
-            thresh_chars = (1.0 - thresh) * longer;
+            thresh_chars = (1.0 - lthresh) * longer;
             /* Prune using length difference as lower bound */
             if (abs(sizes1[i] - sizes2[j]) > thresh_chars) {
                 cmat[i][j] = -1;
@@ -7100,6 +7104,9 @@ compare_lists_py(PyObject *self, PyObject *args)
                 return NULL;
             } else if (distance == (size_t)(-2)) {
                 distance = -1;
+            }
+            if (bestonly && distance > 0 && distance < thresh_chars) {
+                lthresh = 1.0 - ((double) distance / (double) longer);
             }
 
             cmat[i][j] = distance;
