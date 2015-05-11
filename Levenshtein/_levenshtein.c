@@ -2416,9 +2416,9 @@ lev_edit_distance_sod(size_t len, const lev_byte *string,
  * Returns: The edit distance.
  **/
 _LEV_STATIC_PY size_t
-lev_u_edit_distance(size_t len1, const lev_wchar *string1,
-                    size_t len2, const lev_wchar *string2,
-                    int xcost)
+lev_u_thresh(size_t len1, const lev_wchar *string1,
+             size_t len2, const lev_wchar *string2,
+             int xcost, float thresh)
 {
   size_t i;
   size_t *row;  /* we only need to keep one row of costs */
@@ -2506,9 +2506,11 @@ lev_u_edit_distance(size_t len1, const lev_wchar *string1,
     row[0] = len1 - half - 1;
     for (i = 1; i < len1; i++) {
       size_t *p;
+      size_t *pp;
       const lev_wchar char1 = string1[i - 1];
       const lev_wchar *char2p;
       size_t D, x;
+      int j;
       /* skip the upper triangle */
       if (i >= len1 - half) {
         size_t offset = i - (len1 - half);
@@ -2532,6 +2534,20 @@ lev_u_edit_distance(size_t len1, const lev_wchar *string1,
       /* skip the lower triangle */
       if (i <= half + 1)
         end = row + len2 + i - half - 2;
+      /* check for early stopping threshold */
+      pp = p;
+      while (pp <= end) {
+        if (*pp <= thresh + 0.5) {
+            pp = NULL;
+            break; /* might still find a solution */
+        }
+        pp++;
+      }
+      if (pp) {
+        /* early stop */
+        free(row);
+        return (size_t)(-2);    /* -1 already reserved */
+      }
       /* main */
       while (p <= end) {
         size_t c3 = --D + (char1 != *(char2p++));
@@ -2559,6 +2575,16 @@ lev_u_edit_distance(size_t len1, const lev_wchar *string1,
   free(row);
   return i;
 }
+
+/* retained as wrapper for backwards compatibility */
+_LEV_STATIC_PY size_t
+lev_u_edit_distance(size_t len1, const lev_wchar *string1,
+                    size_t len2, const lev_wchar *string2,
+                    int xcost)
+{
+    return lev_u_thresh(len1, string1, len2, string2, xcost, -1.0);
+}
+
 
 _LEV_STATIC_PY double
 lev_u_edit_distance_sod(size_t len, const lev_wchar *string,
@@ -7066,12 +7092,16 @@ compare_lists_py(PyObject *self, PyObject *args)
                 continue;
             }
 
-            distance = lev_u_edit_distance(
-                sizes1[i], strings1[i], sizes2[j], strings2[j], xcost);
+            distance = lev_u_thresh(sizes1[i], strings1[i],
+                                    sizes2[j], strings2[j],
+                                    xcost, thresh_chars);
             if (distance == (size_t)(-1)) {
                 PyErr_NoMemory();
                 return NULL;
+            } else if (distance == (size_t)(-2)) {
+                distance = -1;
             }
+
             cmat[i][j] = distance;
         }
     }
