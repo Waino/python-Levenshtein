@@ -2418,7 +2418,7 @@ lev_edit_distance_sod(size_t len, const lev_byte *string,
 _LEV_STATIC_PY size_t
 lev_u_thresh(size_t len1, const lev_wchar *string1,
              size_t len2, const lev_wchar *string2,
-             int xcost, float thresh)
+             int xcost, int thresh)
 {
   size_t i;
   size_t *row;  /* we only need to keep one row of costs */
@@ -2537,7 +2537,7 @@ lev_u_thresh(size_t len1, const lev_wchar *string1,
       /* check for early stopping threshold */
       pp = p;
       while (pp <= end) {
-        if (*pp <= thresh + 0.6) {
+        if (*pp <= thresh) {
             pp = NULL;
             break; /* might still find a solution */
         }
@@ -7098,7 +7098,7 @@ compare_lists_py(PyObject *self, PyObject *args)
 
             distance = lev_u_thresh(sizes1[i], strings1[i],
                                     sizes2[j], strings2[j],
-                                    xcost, thresh_chars);
+                                    xcost, ceil(thresh_chars));
             if (distance == (size_t)(-1)) {
                 PyErr_NoMemory();
                 return NULL;
