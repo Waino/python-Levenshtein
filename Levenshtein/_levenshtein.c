@@ -2510,7 +2510,6 @@ lev_u_thresh(size_t len1, const lev_wchar *string1,
       const lev_wchar char1 = string1[i - 1];
       const lev_wchar *char2p;
       size_t D, x;
-      int j;
       /* skip the upper triangle */
       if (i >= len1 - half) {
         size_t offset = i - (len1 - half);
@@ -7063,8 +7062,8 @@ compare_lists_py(PyObject *self, PyObject *args)
     }
 
     /* Precalculate histograms for bag distance pruning */
-    histograms1 = (bag_t *)malloc((size_t) (dims[0]*sizeof(bag_t)));
-    histograms2 = (bag_t *)malloc((size_t) (dims[1]*sizeof(bag_t)));
+    histograms1 = (bag_t **)malloc((size_t) (dims[0]*sizeof(bag_t)));
+    histograms2 = (bag_t **)malloc((size_t) (dims[1]*sizeof(bag_t)));
     for (i=0; i<dims[0]; i++) {
         histograms1[i] = bag_create(strings1[i], sizes1[i]);
     }
