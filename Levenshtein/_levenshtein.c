@@ -2537,7 +2537,7 @@ lev_u_thresh(size_t len1, const lev_wchar *string1,
       /* check for early stopping threshold */
       pp = p;
       while (pp <= end) {
-        if (*pp <= thresh + 0.5) {
+        if (*pp <= thresh + 0.6) {
             pp = NULL;
             break; /* might still find a solution */
         }
