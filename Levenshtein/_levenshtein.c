@@ -7002,6 +7002,7 @@ compare_lists_py(PyObject *self, PyObject *args)
     bag_t **histograms1;
     bag_t **histograms2;
     double thresh_chars;
+    int thresh_ceil;
     const char *name = "compare_lists";
     const int xcost = 0;    /* substitution cost is 1 */
 
@@ -7081,8 +7082,9 @@ compare_lists_py(PyObject *self, PyObject *args)
                 longer = sizes2[j];
             }
             thresh_chars = (1.0 - lthresh) * longer;
+            thresh_ceil = ceil(thresh_chars);
             /* Prune using length difference as lower bound */
-            if (abs(sizes1[i] - sizes2[j]) > thresh_chars) {
+            if (abs(sizes1[i] - sizes2[j]) > thresh_ceil) {
                 cmat[i][j] = -1;
                 continue;
             }
@@ -7090,14 +7092,14 @@ compare_lists_py(PyObject *self, PyObject *args)
             distance = bag_distance(histograms1[i],
                                     histograms2[j],
                                     sizes2[j]);
-            if (distance > thresh_chars) {
+            if (distance > thresh_ceil) {
                 cmat[i][j] = -1;
                 continue;
             }
 
             distance = lev_u_thresh(sizes1[i], strings1[i],
                                     sizes2[j], strings2[j],
-                                    xcost, ceil(thresh_chars));
+                                    xcost, thresh_ceil);
             if (distance == (size_t)(-1)) {
                 PyErr_NoMemory();
                 return NULL;
