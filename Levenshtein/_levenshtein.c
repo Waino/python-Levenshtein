@@ -7081,8 +7081,9 @@ compare_lists_py(PyObject *self, PyObject *args)
             if (sizes2[j] > longer) {
                 longer = sizes2[j];
             }
-            thresh_chars = (1.0 - lthresh) * longer;
-            thresh_ceil = ceil(thresh_chars);
+            thresh_chars = (1.00 - lthresh) * longer;
+            /* epsilon added to fix some float comparison disagreements */
+            thresh_ceil = ceil(thresh_chars + 0.01);
             /* Prune using length difference as lower bound */
             if (abs(sizes1[i] - sizes2[j]) > thresh_ceil) {
                 cmat[i][j] = -1;
