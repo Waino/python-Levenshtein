@@ -142,6 +142,9 @@
 #define LEV_EPSILON 1e-14
 #define LEV_INFINITY 1e100
 
+/* To turn off optimizations, define this */
+/* define LEV_NO_OPTIMIZATION 1 */
+
 /* Me thinks the second argument of PyArg_UnpackTuple() should be const.
  * Anyway I habitually pass a constant string.
  * A cast to placate the compiler. */
@@ -2533,6 +2536,7 @@ lev_u_thresh(size_t len1, const lev_wchar *string1,
       /* skip the lower triangle */
       if (i <= half + 1)
         end = row + len2 + i - half - 2;
+      #ifndef LEV_NO_OPTIMIZATION
       /* check for early stopping threshold */
       pp = p;
       while (pp <= end) {
@@ -2547,6 +2551,7 @@ lev_u_thresh(size_t len1, const lev_wchar *string1,
         free(row);
         return (size_t)(-2);    /* -1 already reserved */
       }
+      #endif
       /* main */
       while (p <= end) {
         size_t c3 = --D + (char1 != *(char2p++));
@@ -7062,6 +7067,7 @@ compare_lists_py(PyObject *self, PyObject *args)
         return NULL;
     }
 
+    #ifndef LEV_NO_OPTIMIZATION
     /* Precalculate histograms for bag distance pruning */
     histograms1 = (bag_t **)malloc((size_t) (dims[0]*sizeof(bag_t)));
     histograms2 = (bag_t **)malloc((size_t) (dims[1]*sizeof(bag_t)));
@@ -7071,6 +7077,7 @@ compare_lists_py(PyObject *self, PyObject *args)
     for (j=0; j<dims[1]; j++) {
         histograms2[j] = bag_create(strings2[j], sizes2[j]);
     }
+    #endif
 
     npmat = (PyArrayObject *) PyArray_FromDims(2, dims, NPY_DOUBLE);
     cmat = pymatrix_to_Carrayptrs(npmat);
@@ -7082,6 +7089,7 @@ compare_lists_py(PyObject *self, PyObject *args)
                 longer = sizes2[j];
             }
             thresh_chars = (1.00 - lthresh) * longer;
+            #ifndef LEV_NO_OPTIMIZATION
             /* epsilon added to fix some float comparison disagreements */
             thresh_ceil = ceil(thresh_chars + 0.01);
             /* Prune using length difference as lower bound */
@@ -7097,6 +7105,7 @@ compare_lists_py(PyObject *self, PyObject *args)
                 cmat[i][j] = -1;
                 continue;
             }
+            #endif
 
             distance = lev_u_thresh(sizes1[i], strings1[i],
                                     sizes2[j], strings2[j],
@@ -7107,9 +7116,11 @@ compare_lists_py(PyObject *self, PyObject *args)
             } else if (distance == (size_t)(-2)) {
                 distance = -1;
             }
+            #ifndef LEV_NO_OPTIMIZATION
             if (bestonly && distance > 0 && distance < thresh_chars) {
                 lthresh = 1.0 - ((double) distance / (double) longer);
             }
+            #endif
 
             cmat[i][j] = distance;
         }
@@ -7120,6 +7131,7 @@ compare_lists_py(PyObject *self, PyObject *args)
     free(sizes1);
     free(sizes2);
     free_Carrayptrs(cmat);
+    #ifndef LEV_NO_OPTIMIZATION
     for (i=0; i<dims[0]; i++) {
         bag_destroy(histograms1[i]);
     }
@@ -7128,6 +7140,7 @@ compare_lists_py(PyObject *self, PyObject *args)
     }
     free(histograms1);
     free(histograms2);
+    #endif
 
     return PyArray_Return(npmat);
 }
